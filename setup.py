@@ -15,7 +15,9 @@ setup(
     license='MIT',
     packages=find_packages(),
     test_suite='test',
-    install_requires=['numpy>=1.13', 'scipy>=1.0', 'matplotlib>=2.0,<3.0'],
+    install_requires=['numpy>=1.17.4', 'scipy>=1.3.2', 'matplotlib>=3.0.3', 
+                      'pyvo>=1.0', 'argparse>=1.1', 'lmfit>=0.9.15',
+                      'astropy>=3.2.3'],
     classifiers=[
         'Intended Audience :: Science/Research',
         'Intended Audience :: Education',
@@ -23,5 +25,5 @@ setup(
         'Topic :: Education',
         'Programming Language :: Python :: 3',
     ],
-    keywords='sample science astrophysics',
+    keywords='astrophysics instrumentation',
 )

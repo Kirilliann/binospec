@@ -16,12 +16,12 @@ from astropy import units as u
 from .utils import *
 
 
-cd_pref = 'CD'
 def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
              mkplt=True, stilts_path='~/stilts.jar', sex_path='sex',
-             ext=1, sep=12.5, SE_method='PU'):
+             ext=1, sep=12.5, SE_method='PU', cd_pref = 'CD', 
+             sc='GDR2', savecat=False):
     """
-    WCS correction for images obtained with MMIRS. Kirill Grishin, email: kirillg6@gmail.com
+    WCS correction for images obtained with MMIRS. Kirill Grishin, email: grishin@voxastro.org
     input_file -- input fits file with images
     d_ra -- initial guess in ra shift (deg)
     d_dec -- initial guess in dec shift (deg)
@@ -36,11 +36,9 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
     min_sep = sep
     filter_2mass_converter = {'K': 'k_m', 'J': 'j_m'}
 
-    filename = input_file #'/data1/Data/MMIRS/ComaA_K/Coma1_519_K_mean.fits'
+    filename = input_file
     fnm = ntpath.basename(filename).split('.fits')[0]
     bg_framename = 'check.fits'
-    #service = vo.dal.TAPService("http://vao.stsci.edu/PS1DR2/tapservice.aspx")
-    service = vo.dal.TAPService("http://gea.esac.esa.int/tap-server/tap")
     hdul = fits.open(filename)
     frame = hdul[ext]
     frame.header['CRVAl1'] = frame.header['CRVAl1'] + d_ra
@@ -51,17 +49,13 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
     hdul.writeto(tmp_filename, overwrite=True)
     w = wcs.WCS(frame.header)
     center_coords = w.wcs_pix2world(frame.data.shape[0]/2., frame.data.shape[1]/2., 1)
-    #query_text = "SELECT RAMean, DecMean, yKronMag  FROM dbo.StackObjectView WHERE CONTAINS(POINT('ICRS',RAMean, DecMean),CIRCLE('ICRS',%.5f,%.5f,%.5f))=1 AND nDetections > 5 AND yKronMag < 24 AND yKronMag > -999" % (center_coords[0], center_coords[1], 0.15)
-    query_text = make_query(center_coords[0], center_coords[1], source='GDR2', r=0.3)
-    ir_cat = service.search(query_text)
-    ir_cat = ir_cat.to_table()
+    query_text = make_query(center_coords[0], center_coords[1], source=sc, r=0.2)
+    ir_cat = get_table(query_text, source=sc, savecat=savecat, catnm=fnm + '_stellar_cat.fits')
     rf = open("test.reg", "a+")
     rf.write("global color=green\nfk5\n")
     for row in ir_cat:
-            rf.write("circle(%.5f,%.5f,1.0\")\n" % (row['ra'], row['dec']))
+            rf.write("circle(%.5f,%.5f,1.0\")\n" % (row['RAJ2000'], row['DEJ2000']))
     rf.close()
-    #sex_command = "%s %s -CATALOG_NAME %s" % (sex_path, tmp_filename, fnm+'_astrometry_scatalog.fits')
-    #os.system(sex_command)
     source_extraction(tmp_filename, fnm+'_astrometry_scatalog.fits', method=SE_method, sex_path=sex_path)
     sctbl_ext = 2 if SE_method=='SE' else 1
     sx_cat = Table(fits.open(fnm+'_astrometry_scatalog.fits')[sctbl_ext].data)
@@ -73,7 +67,7 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
             xy_c.append([row['X_IMAGE'], row['Y_IMAGE']])
     sf.close()
     sx_c = w.all_pix2world(xy_c,1)
-    final_tbl = cross_match(sx_cat, ir_cat, b_ra_name='ra', b_dec_name='dec')
+    final_tbl = cross_match(sx_cat, ir_cat, b_ra_name='RAJ2000', b_dec_name='DEJ2000')
     if SE_method == 'SE':
         final_tbl = final_tbl[final_tbl['FLUX_RADIUS'] < 5.0]
     final_tbl_ = final_tbl.copy()
@@ -81,7 +75,7 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
     ff = open("final_cat.reg", "a+")
     ff.write("global color=blue\n fk5\n")
     for row in final_tbl_:
-            ff.write("circle(%.5f,%.5f,1.0\")\n" % (row['ra'], row['dec']))
+            ff.write("circle(%.5f,%.5f,1.0\")\n" % (row['RAJ2000'], row['DEJ2000']))
     ff.close()
 
     params = Parameters()
@@ -100,7 +94,7 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
             hdr_c['CRVAL1'] = params['CRVAL1'].value
             hdr_c['CRVAL2'] = params['CRVAL2'].value
             w = wcs.WCS(hdr_c) 
-            w2p = np.array([final_tbl_['ra'],final_tbl_['dec']])
+            w2p = np.array([final_tbl_['RAJ2000'],final_tbl_['DEJ2000']])
             pix_c = w.all_world2pix(w2p.T,1)
             pix_fr = np.array([final_tbl_['X_IMAGE'],final_tbl_['Y_IMAGE']]).T
             resid = pix_c - pix_fr
@@ -152,6 +146,3 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
             bg_level = np.median(bg_img)
             hdul[ext].data = hdul[ext].data - bg_level
     hdul.writeto(fnm + '_corr_bgsubstr.fits', overwrite=True)
-
-
-
