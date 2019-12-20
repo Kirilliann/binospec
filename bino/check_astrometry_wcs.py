@@ -31,7 +31,7 @@ cd_pref = 'CD'
 
 def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
              mkplt=True, stilts_path='~/stilts.jar', sex_path='sex',
-             ext=1, sep=12.5):
+             ext=1, sep=12.5, SE_method='PU'):
     """
     WCS correction for images obtained with MMIRS. Kirill Grishin, email: kirillg6@gmail.com
     """
@@ -62,9 +62,11 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
     for row in ir_cat:
             rf.write("circle(%.5f,%.5f,1.0\")\n" % (row['ra'], row['dec']))
     rf.close()
-    sex_command = "%s %s -CATALOG_NAME %s" % (sex_path, tmp_filename, fnm+'_astrometry_scatalog.fits')
-    os.system(sex_command)
-    sx_cat = Table(fits.open(fnm+'_astrometry_scatalog.fits')[2].data)
+    #sex_command = "%s %s -CATALOG_NAME %s" % (sex_path, tmp_filename, fnm+'_astrometry_scatalog.fits')
+    #os.system(sex_command)
+    source_extraction(tmp_filename, fnm+'_astrometry_scatalog.fits', method=SE_method, sex_path=sex_path)
+    sctbl_ext = 2 if SE_method=='SE' else 1
+    sx_cat = Table(fits.open(fnm+'_astrometry_scatalog.fits')[sctbl_ext].data)
     sf = open("test_sex.reg", "a+")
     sf.write("global color=red\n fk5\n")
     xy_c = []
@@ -74,7 +76,8 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
     sf.close()
     sx_c = w.all_pix2world(xy_c,1)
     final_tbl = cross_match(sx_cat, ir_cat, b_ra_name='ra', b_dec_name='dec')
-    final_tbl = final_tbl[final_tbl['FLUX_RADIUS'] < 5.0]
+    if SE_method == 'SE':
+        final_tbl = final_tbl[final_tbl['FLUX_RADIUS'] < 5.0]
     final_tbl_ = final_tbl.copy()
 
     ff = open("final_cat.reg", "a+")

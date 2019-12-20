@@ -3,6 +3,11 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 import numpy as np
 import os
+from astropy.stats import sigma_clipped_stats
+from photutils import DAOStarFinder
+from astropy import wcs
+from astropy.io import fits
+
 
 def cross_match(a_cat, b_cat, a_ra_name='ALPHA_J2000',
                 b_ra_name='RAJ2000', a_dec_name='DELTA_J2000',
@@ -31,4 +36,25 @@ def cross_match_stilts(fnm, stilts_path='~/stilts.jar'):
     stilts_command = "java -jar %s tskymatch2 ifmt1=fits ifmt2=fits find=best join=1and2 in1=%s#2 in2=pannstarrs_cat.fits ra1=ALPHA_J2000 dec1=DELTA_J2000 ra2=ra dec2=dec out=%s ofmt=fits error=14.5" % (stilts_path, fnm+'_astrometry_scatalog.fits', fnm+'_astrometry_matched.fits')
     os.system(stilts_command)
 
+def source_extraction(input_image, catalog_name, method='PU', sex_path='sex'):
+    if method == 'PU':
+        hdu = fits.open(input_image)
+        data = hdu[1].data
+        mean, median, std = sigma_clipped_stats(data, sigma=3.0)
+        daofind = DAOStarFinder(fwhm=4.0, threshold=20)
+        sources = daofind(data - median)
+        w = wcs.WCS(hdu[1].header)
+        c_p = np.array([sources['xcentroid'],sources['ycentroid']])
+        c_p = c_p.T
+        c_c = w.wcs_pix2world(c_p, 0)
+        sources['ALPHA_J2000'] = c_c[:,0]
+        sources['DELTA_J2000'] = c_c[:,1]
+        sources['xcentroid'].name = 'X_IMAGE'
+        sources['ycentroid'].name = 'Y_IMAGE'
+        sources.write(catalog_name, overwrite=True)
+    if method == 'SE':
+        sex_command = "%s %s -CATALOG_NAME %s" % (sex_path, input_image, catalog_name)
+        os.system(sex_command)
 
+        
+        
