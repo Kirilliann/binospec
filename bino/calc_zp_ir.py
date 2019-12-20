@@ -11,7 +11,7 @@ import ntpath
 import argparse
 from astropy.coordinates import SkyCoord
 from astropy import units as u
-from .utils import cross_match, make_query
+from .utils import *
 '''
 parser = argparse.ArgumentParser(description='Photometric zeropoint calculation for images obtained with MMIRS. Kirill Grishin, email: kirillg6@gmail.com')
 parser.add_argument("input_file", help="input fits file")
@@ -28,7 +28,7 @@ args = parser.parse_args()
 
 def calc_zp_ir(input_file, sc='2M', sep=0.8, log=False,
                logfile='LOG_ZP.csv', savecat=False, sex_path='sex',
-               savesc=True, plot=True):
+               savesc=True, plot=True, SE_method='PU'):
     """
     Function for zeropoint calculation
     input_file - input fits file
@@ -61,11 +61,14 @@ def calc_zp_ir(input_file, sc='2M', sep=0.8, log=False,
     if savecat:
             catnm = fnm + '_stellar_cat.fits'
             ir_cat.write(catnm, format='fits', overwrite=True)
-    sex_command = "%s %s -CATALOG_NAME %s -CHECKIMAGE_TYPE NONE" % (sex_path, filename, fnm+'_zpcalc_scatalog.fits')
-    os.system(sex_command)
-    sx_cat = Table(fits.open(fnm+'_zpcalc_scatalog.fits')[2].data)
+    #sex_command = "%s %s -CATALOG_NAME %s -CHECKIMAGE_TYPE NONE" % (sex_path, filename, fnm+'_zpcalc_scatalog.fits')
+    #os.system(sex_command)
+    source_extraction(filename, fnm+'_zpcalc_scatalog.fits', method=SE_method, sex_path=sex_path)
+    sctbl_ext = 2 if SE_method=='SE' else 1
+    sx_cat = Table(fits.open(fnm+'_zpcalc_scatalog.fits')[sctbl_ext].data)
     final_tbl = cross_match(sx_cat, ir_cat)
-    final_tbl = final_tbl[final_tbl['FLUX_RADIUS'] < 5.0]
+    if SE_method == 'SE':
+        final_tbl = final_tbl[final_tbl['FLUX_RADIUS'] < 5.0]
     y_plt = -2.5*np.log10(final_tbl['FLUX_AUTO'])
     print(filter_2mass_converter[frame.header['FILTID1']][data_source])
     x_plt = final_tbl[filter_2mass_converter[frame.header['FILTID1']][data_source]]

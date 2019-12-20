@@ -51,6 +51,7 @@ def source_extraction(input_image, catalog_name, method='PU', sex_path='sex'):
         sources['DELTA_J2000'] = c_c[:,1]
         sources['xcentroid'].name = 'X_IMAGE'
         sources['ycentroid'].name = 'Y_IMAGE'
+        sources['flux'].name = 'FLUX_AUTO'
         sources.write(catalog_name, overwrite=True)
     if method == 'SE':
         sex_command = "%s %s -CATALOG_NAME %s" % (sex_path, input_image, catalog_name)

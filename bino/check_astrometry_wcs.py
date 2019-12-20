@@ -14,26 +14,24 @@ from lmfit import Minimizer, Parameters, report_fit
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from .utils import *
-'''
-parser = argparse.ArgumentParser(description='WCS correction for images obtained with MMIRS. Kirill Grishin, email: kirillg6@gmail.com')
-parser.add_argument("input_file", help="input fits file")
-parser.add_argument("-d_ra", help="initial guess for shift in ra (deg)", default=0, type=float)
-parser.add_argument("-d_dec", help="initial guess for shift in dec (deg)", default=0, type=float)
-parser.add_argument("-bgsub", help="substract background (keyword)",nargs='?', const=True, default=True)
-parser.add_argument("-mkplt", help="make plot",nargs='?', const=True, default=False)
-parser.add_argument("-stilts_path", help="path to stilts .jar file", default='~/stilts.jar', type=str)
-parser.add_argument("-sex_path", help="path to sextractor", default='sex', type=str)
-parser.add_argument("-ext", help="extension", default=1, type=int)
-parser.add_argument("-sep", help="minimun separation", default=12.5, type=float)
-args = parser.parse_args()
-'''
-cd_pref = 'CD'
 
+
+cd_pref = 'CD'
 def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
              mkplt=True, stilts_path='~/stilts.jar', sex_path='sex',
              ext=1, sep=12.5, SE_method='PU'):
     """
     WCS correction for images obtained with MMIRS. Kirill Grishin, email: kirillg6@gmail.com
+    input_file -- input fits file with images
+    d_ra -- initial guess in ra shift (deg)
+    d_dec -- initial guess in dec shift (deg)
+    bgsub -- substract background
+    mkplt -- make plots
+    stilts_path -- path to stilts .jar file
+    sex_path -- path to sextractor
+    ext -- extension
+    sep -- minimun separation
+    SE_method - method for source extraction. Options: SE - SExtractor, PU (default) - PhotUtils
     """
     min_sep = sep
     filter_2mass_converter = {'K': 'k_m', 'J': 'j_m'}
