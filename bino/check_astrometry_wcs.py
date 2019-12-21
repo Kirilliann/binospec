@@ -142,7 +142,6 @@ def corr_wcs(input_file, d_ra=0, d_dec=0, bgsub=True,
     hdul[ext].verify('fix')
     hdul.writeto(fnm + '_corrected.fits', overwrite=True)
     if bgsub:
-            bg_img = fits.open(bg_framename)[0].data
-            bg_level = np.median(bg_img)
+            bg_level = np.nanmedian(frame.data)
             hdul[ext].data = hdul[ext].data - bg_level
     hdul.writeto(fnm + '_corr_bgsubstr.fits', overwrite=True)
